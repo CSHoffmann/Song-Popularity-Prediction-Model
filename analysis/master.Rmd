@@ -1,0 +1,15 @@
+---
+title: "STAT-427/627 Final Project"
+author: "Beau Swallow, Chris Hoffmann, and Parker Brotman"
+date: "4/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+top50 = read_csv('../data/top50cleaned.csv')
+```
+

@@ -1,0 +1,50 @@
+---
+title: "Data Cleaning"
+author: "Parker Brotman"
+date: "4/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+top50uncleaned = read_csv('../data/top50.csv')
+```
+
+```{r}
+top50uncleaned%>%
+  mutate(isPop = str_detect(Genre,'pop|boy band|big room'),
+         isHipHop = str_detect(Genre,'rap|hip hop|trap|escape room') | str_detect(Track.Name,'No Guidance|7 rings	') | X1 == 44,
+         isEDM = str_detect(Genre,'edm|brostep|house'),
+         isLatin = str_detect(Genre,'latin|reggaeton|espanol') | str_detect(Track.Name,'Otro|Contigo'))->
+  temp
+```
+
+```{r}
+temp%>%
+  mutate(Genre = ifelse(isLatin,'Latin',
+                        ifelse(isEDM, 'Pop',
+                               ifelse(isHipHop, 'Hip Hop',
+                                      ifelse(isPop, 'Pop', NA)))),
+         Genre = as.factor(Genre))%>%
+  select(-isLatin,-isEDM,-isHipHop,-isPop)->
+  top50cleaned
+glimpse(top50cleaned)
+```
+
+```{r}
+top50cleaned%>%
+  group_by(Genre)%>%
+  summarise(n())
+```
+
+```{r}
+write_csv(top50cleaned,'../data/top50cleaned.csv')
+```
+
