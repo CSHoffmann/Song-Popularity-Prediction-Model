@@ -9,22 +9,43 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Reading in the Data 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+library(tidyverse)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+top50 <- read_csv("../data/top50cleaned.csv")
+glimpse(top50)
+attach(top50)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Variable Selection and Shrinkage for Song Popularity Prediction
+
+```{r}
+library(leaps)
+```
+
+This test focuses on variable selection for the response "Popularity." In other words, finding the most optimal regression function for the prediction of a song's popularity rating.
+
+The predictors used are:   
+- Genre: Categorical variable that creates dummy variables GenreLatin and GenrePop   
+- Beats Per Minute  
+- Energy
+- Dancibilty  
+- Loudness    
+- Liveness  
+- Valence  
+- Length    
+- Acousticness  
+- Speechiness  
+
+```{r}
+reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
+           data = top50, nvmax = 11)
+
+summary(reg.fit)
+```
+
+
