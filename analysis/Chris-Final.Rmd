@@ -1,0 +1,51 @@
+---
+title: "Chris_Final"
+author: "Christopher Hoffmann"
+date: "5/3/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Reading in the Data 
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+top50 <- read_csv("../data/top50cleaned.csv")
+glimpse(top50)
+attach(top50)
+```
+
+# Variable Selection and Shrinkage for Song Popularity Prediction
+
+```{r}
+library(leaps)
+```
+
+This test focuses on variable selection for the response "Popularity." In other words, finding the most optimal regression function for the prediction of a song's popularity rating.
+
+The predictors used are:   
+- Genre: Categorical variable that creates dummy variables GenreLatin and GenrePop   
+- Beats Per Minute  
+- Energy
+- Dancibilty  
+- Loudness    
+- Liveness  
+- Valence  
+- Length    
+- Acousticness  
+- Speechiness  
+
+```{r}
+reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
+           data = top50, nvmax = 11)
+
+summary(reg.fit)
+```
+
+
