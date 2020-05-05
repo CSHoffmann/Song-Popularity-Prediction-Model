@@ -29,6 +29,7 @@ spo.mat.training <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popul
 spo.mat.testing <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.testing)[,-1]
 ```
 
+#Using LASSO and Ridge Regression
 ```{r}
 #LASSO
 spo.lasso <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=1)
@@ -47,6 +48,7 @@ summary(spo.ridge)
 ```
 - MSE for Ridge Regression and LASSO methods is 15.9.
 
+#Using PCR
 ```{r}
 reg.pcr <- pcr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
 validationplot(reg.pcr, val.type = "R2")
@@ -57,6 +59,7 @@ mean((pred.pcr - spotify.testing$Popularity)^2)
 ```
 - MSE for PCR method is 19. Oddly, the screeplot is sloped upward which may suggest less components are better at explaining the model.
 
+#Using PLS
 ```{r}
 reg.pls <- plsr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
 validationplot(reg.pls, val.type = "R2")
