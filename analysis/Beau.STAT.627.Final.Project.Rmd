@@ -2,7 +2,7 @@
 title: "Beau.STAT.627.Project"
 output: pdf_document
 ---
-```{r}
+```{r, message=FALSE}
 library (readr)
 library(leaps)
 library(car)
@@ -15,18 +15,16 @@ library(glmnet)
 top50 <- read_csv("/Users/BeauSwallow/Downloads//top50cleaned.txt")
 top50$Genre<-as.factor(top50$Genre)
 ```
-```{r}
-reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
-           data = top50, nvmax = 11)
-summary(reg.fit)
-```
 
 ```{r}
 set.seed(11)
-training = sample(1:dim(top50)[1], dim(top50)[1] / 2)
+#Create training and testing data
+n=nrow(top50)
+training = sample(1:n,n/2)
 testing <- -training
 spotify.training <- top50[training, ]
 spotify.testing <- top50[testing, ]
+#Create training and testing matrices
 spo.mat.training <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.training)[,-1]
 spo.mat.testing <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.testing)[,-1]
 ```
@@ -47,21 +45,26 @@ pred.ridge <- predict(spo.ridge, s=lambda, newx=spo.mat.testing)
 predict(spo.ridge, s=lambda, type="coefficients")
 summary(spo.ridge)
 ```
+- MSE for Ridge Regression and LASSO methods is 15.9.
 
 ```{r}
 reg.pcr <- pcr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
+validationplot(reg.pcr, val.type = "R2")
 validationplot(reg.pcr, val.type = "MSEP")
 pred.pcr <- predict(reg.pcr, spotify.testing, ncomp = 10)
 #Calculate MSE
 mean((pred.pcr - spotify.testing$Popularity)^2)
 ```
+- MSE for PCR method is 19. Oddly, the screeplot is sloped upward which may suggest less components are better at explaining the model.
 
 ```{r}
 reg.pls <- plsr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
+validationplot(reg.pls, val.type = "R2")
 validationplot(reg.pls, val.type = "MSEP")
 pred.pls <- predict(reg.pls, spotify.testing, ncomp = 10)
 #Calculate MSE
 mean((pred.pls - spotify.testing$Popularity)^2)
 ```
+- MSE for PLS method is 18.8. Same with PCR, the screeplot is oddly sloped upward which suggests more components will lead to a larger MSE.
 
-
+- The MSE for Ridge and LASSO is lower than the MSE for PCR and PLS and the screeplots were shaped oddly so I would advise against PCR and PLS here in favor of LASSO and Ridge.
