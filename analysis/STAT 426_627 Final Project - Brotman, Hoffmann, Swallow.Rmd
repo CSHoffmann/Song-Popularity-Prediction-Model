@@ -1,0 +1,302 @@
+---
+title: "STAT - 427/627 Final Project"
+author: "Parker Brotman, Christopher Hoffmann, Beau Swallow"
+date: "5/4/2020"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Reading in the Data and Libraries
+```{r}
+library(tidyverse)
+library(e1071)
+library(MASS)
+library(readr)
+library(leaps)
+library(car)
+library(ISLR)
+library(pls)
+library(glmnet)
+```
+
+```{r}
+top50 = read_csv("../data/top50cleaned.csv", 
+                 col_types = cols(Genre = col_factor()))
+attach(top50)
+```
+
+
+# Introduction to the Data
+
+The data we decided to use is called "Top 50 Spotify Songs - 2019" and cand be found [**here**](https://www.kaggle.com/leonardopena/top50spotify2019)
+
+The variables that are used from the dataset are described below:   
+
+- Popularity: Numerical rank of song  
+- Genre: Categorical variable of three categories (Hip Hop, Pop and Latin)
+- Beats Per Minute: The tempo of the song  
+- Energy: Higher values indicate higher levels of energy from the song    
+- Dancibilty: Higher values indicate higher dancibility of song   
+- Loudness: Loudness of song measured in decibles    
+- Liveness: Likelihood song is a live recording   
+- Valence: The higher the value, the more positive the mood of the song  
+- Length: Duration of song      
+- Acousticness: The higher the value, the more acoustic the song is     
+- Speechiness: Higher values indicate more lyrics  
+
+# Predicting Genre with SVM
+
+## Model Selection
+First, let's determine which kernel and costs to use.
+```{r}
+set.seed(1)
+S1tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='linear',ranges = list(cost=10^seq(-3,3)) )
+```
+```{r}
+set.seed(1)
+S2tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='polynomial',ranges = list(cost=10^seq(-3,3)) )
+```
+```{r}
+set.seed(1)
+S3tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='radial',ranges = list(cost=10^seq(-3,3)) )
+```
+```{r}
+set.seed(1)
+S4tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='sigmoid',ranges = list(cost=10^seq(-3,3)) )
+```
+
+```{r}
+summary(S1tuned)
+```
+
+```{r}
+summary(S2tuned)
+```
+
+```{r}
+summary(S3tuned)
+```
+
+```{r}
+summary(S4tuned)
+```
+
+The two most promising models appear to be the Linear kernel with cost = .1 and the Radial kernel with cost = 1. Now, let's evaluate the predictive accuracy of these two models.
+
+
+## Evaluating Predictive Accuracy
+This is a small dataset, so rather than splitting the data into training/testing, let's use LOOCV to determine predictive accuracy.
+```{r}
+n = nrow(top50)
+preds = c()
+for (i in 1:n) {
+  d.train = top50[-i,]
+  d.test = top50[i,]
+  s.temp = svm(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = d.train,kernel='linear',cost=.1)
+  yhat = predict(s.temp,d.test['Genre'])[i]
+  preds = append(preds,yhat)
+}
+preds = recode_factor(preds,`1` ='Pop', `2`='Latin',`3`='Hip Hop')
+table(Predicted= preds,Actual= Genre)
+svm.linear.MSPE = mean(preds == Genre)
+svm.linear.MSPE
+```
+```{r}
+n = nrow(top50)
+preds = c()
+for (i in 1:n) {
+  d.train = top50[-i,]
+  d.test = top50[i,]
+  s.temp = svm(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = d.train,kernel='radial',cost=1)
+  yhat = predict(s.temp,d.test['Genre'])[i]
+  preds = append(preds,yhat)
+}
+preds = recode_factor(preds,`1` ='Pop', `2`='Latin',`3`='Hip Hop')
+table(Predicted= preds,Actual= Genre)
+mean(preds == Genre)
+svm.radial.MSPE = mean(preds == Genre)
+svm.radial.MSPE
+```
+
+The Linear kernal model has a classification rate of .7, while the Radial kernal model has a classification rate of .72. The first model is better at classifying Latin, but can predict Hip Hop with only 50% accuracy. Meanwhile, second model is better at classifying Pop and Hip Hop, but misclassifies Latin as Pop over 2/3 of the time.
+
+
+## Visualizing the Models
+SVM is not a very interpretable model, and it is tough to visualize with more than two dimensions. However, let's refit SVM models using just Loudness and Popularity, and then visualize them.
+```{r}
+plot(svm(Genre ~ Loudness..dB.. + Popularity,data = top50,kernel='linear',cost=.1),top50,Loudness..dB.. ~ Popularity)
+```
+```{r}
+plot(svm(Genre ~ Loudness..dB.. + Popularity,data = top50,kernel='radial',cost=1),top50,Loudness..dB.. ~ Popularity)
+```
+
+In both models, most songs are classified as Pop, except louder and more popular songs are classified as Latin.
+
+
+# LDA/QDA
+
+## Evaluating Predictive Accuracy
+We will evaluate the MSPE of the models using LOOCV, which is conveniently built into the `lda()` and `qda()` functions as an option.
+```{r}
+lda.cv = lda(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,CV = TRUE)
+table(Predicted= lda.cv$class,Actual= Genre)
+lda.MSPE = mean(Genre == lda.cv$class)
+lda.MSPE
+```
+
+
+```{r}
+qda.cv = qda(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,CV = TRUE)
+table(Predicted= qda.cv$class,Actual= Genre)
+qda.MSPE = mean(Genre == qda.cv$class)
+qda.MSPE
+```
+
+The LDA performs which better than the QDA, which indicates that a linear decision boundary, thus equal variances between prior probabilities. The LDA has a classification rate of .78. The QDA, on the other hand, has a dismal classification rate of .52, which is only barely better than guessing.
+
+## Plotting LDA
+```{r}
+lda.fit = lda(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50)
+plot(lda.fit)
+```
+
+We can see that LDA does a nice job separating the three genres, but that there is some overlap in the middle.
+
+# Comparison
+
+Let us compare the MSPE for each of our four models that predict Genre:
+```{r}
+c(SVM.Lin= svm.linear.MSPE, SVM.Rad= svm.radial.MSPE, LDA= lda.MSPE, QDA= qda.MSPE)
+```
+LDA has the best MSPE, while the two SVM models are not too far behind. QDA, meanwhile has a poor MSPE. It is also worth noting a finding which is not captured by MSPE: LDA is much better at correctly classifying Latin and Hip Hop, whereas SVM takes advantage of the class imbalance by overclassifying to Pop.
+
+
+# Linear Regression with Variable Selection 
+
+This test focuses on variable selection for the response "Popularity." In other words, finding the most optimal linear regression function for the prediction of a song's popularity.
+
+```{r}
+reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
+           data = top50, nvmax = 11, method = "exhaustive")
+
+summary(reg.fit)
+```
+
+Using the Adjusted R^2 criterion, the model with the highest adjusted R^2 is the model with 7 predictors. It has an adjusted R^2 value of 0.2319. The 7 chosen predictors are:
+- GenreLatin*  
+- GenrePop*  
+- Danceability   
+- Loudness  
+- Liveness  
+- Valence  
+- Length  
+
+*Note: GenreLatin and GenrePop are dummy variables for the categorical variable Genre, which can either be Hip Hop, Pop or Latin.
+
+```{r}
+summary(reg.fit)$adjr2
+which.max(summary(reg.fit)$adjr2)
+summary(reg.fit)$adjr2[7]
+```
+
+The Mallow's Cp criterion finds that the closest Cp to p is the model with two predictors: GenrePop and Valence.
+```{r}
+summary(reg.fit)$cp
+```
+
+BIC chooses the thrid model, with the three predictos: GenreLatin, Valence, Length.
+```{r}
+summary(reg.fit)$bic
+which.min(summary(reg.fit)$bic)
+```
+
+Looking at Adjusted R^2, Mallow's Cp, and the BIC, the results are all varied. However, I am going to choose the adjusted R^2 since it explains most of a song's popularity compared to the other models.
+
+Looking at the plot we can visually compared the other models and their adjusted R^2.
+```{r}
+plot(reg.fit, scale = "adjr2" )
+```
+
+The coefficients for the model are below. We can see that only the intercept is very statistically significant, with GenreLatin, Valence and Length being statistically significant only if $\alpha$ < 10.
+```{r}
+reg.bestfit <- lm(Popularity ~ Genre + Danceability + Loudness..dB.. + Liveness + Valence. + Length., data = top50)
+
+summary(reg.bestfit)
+```
+
+```{r}
+Yhat.bestfit <- predict(reg.bestfit)
+MSE.bestfit <- mean((Yhat.bestfit - Popularity)^2)
+MSE.bestfit
+
+
+reg.full <- lm(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
+               data = top50)
+Yhat.full <- predict(reg.full)
+MSE.full <- mean((Yhat.full - Popularity)^2)
+MSE.full
+```
+
+The prediction MSE for the best fit linear model is 13.01549. The prediciton MSE for the full model was slightly smaller at 12.68, however its R^2 was 0.17 compared to 0.23. 
+
+# Initialization of Training and Testing Data
+```{r}
+set.seed(11)
+#Create training and testing data
+n=nrow(top50)
+training = sample(1:n,n/2)
+testing <- -training
+spotify.training <- top50[training, ]
+spotify.testing <- top50[testing, ]
+#Create training and testing matrices
+spo.mat.training <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.training)[,-1]
+spo.mat.testing <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.testing)[,-1]
+```
+
+# Using LASSO and Ridge Regression
+```{r}
+#LASSO
+spo.lasso <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=1)
+(lambda <- spo.lasso$lambda.min)  # optimal lambda
+pred.lasso <- predict(spo.lasso, s=lambda, newx=spo.mat.testing)
+(err.lasso <- mean((spotify.testing$Popularity - pred.lasso)^2))
+predict(spo.lasso, s=lambda, type="coefficients")
+summary(spo.lasso)
+#Ridge Regression
+spo.ridge <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=0)
+(lambda <- spo.ridge$lambda.min)
+pred.ridge <- predict(spo.ridge, s=lambda, newx=spo.mat.testing)
+(err.ridge <- mean((spotify.testing$Popularity - pred.ridge)^2)) 
+predict(spo.ridge, s=lambda, type="coefficients")
+summary(spo.ridge)
+```
+- MSE for Ridge Regression and LASSO methods is 15.9.
+
+# Using PCR
+```{r}
+reg.pcr <- pcr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
+validationplot(reg.pcr, val.type = "R2")
+validationplot(reg.pcr, val.type = "MSEP")
+pred.pcr <- predict(reg.pcr, spotify.testing, ncomp = 10)
+#Calculate MSE
+mean((pred.pcr - spotify.testing$Popularity)^2)
+```
+- MSE for PCR method is 19. Oddly, the screeplot is sloped upward which may suggest less components are better at explaining the model.
+
+#Using PLS
+```{r}
+reg.pls <- plsr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
+validationplot(reg.pls, val.type = "R2")
+validationplot(reg.pls, val.type = "MSEP")
+pred.pls <- predict(reg.pls, spotify.testing, ncomp = 10)
+#Calculate MSE
+mean((pred.pls - spotify.testing$Popularity)^2)
+```
+- MSE for PLS method is 18.8. Same with PCR, the screeplot is oddly sloped upward which suggests more components will lead to a larger MSE.
+
+- The MSE for Ridge and LASSO is lower than the MSE for PCR and PLS and the screeplots were shaped oddly so I would advise against PCR and PLS here in favor of LASSO and Ridge.
+
