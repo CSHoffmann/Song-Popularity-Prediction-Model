@@ -21,31 +21,89 @@ glimpse(top50)
 attach(top50)
 ```
 
-# Variable Selection and Shrinkage for Song Popularity Prediction
+# Variable Selection 
 
 ```{r}
 library(leaps)
 ```
 
-This test focuses on variable selection for the response "Popularity." In other words, finding the most optimal regression function for the prediction of a song's popularity rating.
+This test focuses on variable selection for the response "Popularity." In other words, finding the most optimal linear regression function for the prediction of a song's popularity.
 
 The predictors used are:   
-- Genre: Categorical variable that creates dummy variables GenreLatin and GenrePop   
-- Beats Per Minute  
-- Energy
-- Dancibilty  
-- Loudness    
-- Liveness  
-- Valence  
-- Length    
-- Acousticness  
-- Speechiness  
+- Genre: Categorical variable of three categories (Hip Hop, Pop and Latin)  
+- Beats Per Minute: The tempo of the song  
+- Energy: Higher values indicate higher levels of energy from the song     
+- Dancibilty: Higher values indicate higher dancibility of song   
+- Loudness: Loudness of song measured in decibles    
+- Liveness: Likelihood song is a live recording   
+- Valence: The higher the value, the more positive the mood of the song  
+- Length: Duration of song      
+- Acousticness: The higher the value, the more acoustic the song is     
+- Speechiness: Higher values indicate more lyrics  
 
 ```{r}
 reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
-           data = top50, nvmax = 11)
+           data = top50, nvmax = 11, method = "exhaustive")
 
 summary(reg.fit)
 ```
 
+Using the Adjusted R^2 criterion, the model with the highest adjusted R^2 is the model with 7 predictors. It has an adjusted R^2 value of 0.2319. The 7 chosen predictors are:
+- GenreLatin*  
+- GenrePop*  
+- Danceability   
+- Loudness  
+- Liveness  
+- Valence  
+- Length  
+
+*Note: GenreLatin and GenrePop are dummy variables for the categorical variable Genre, which can either be Hip Hop, Pop or Latin.
+
+```{r}
+summary(reg.fit)$adjr2
+which.max(summary(reg.fit)$adjr2)
+summary(reg.fit)$adjr2[7]
+```
+
+The Mallow's Cp criterion finds that the closest Cp to p is the model with two predictors: GenrePop and Valence.
+```{r}
+summary(reg.fit)$cp
+```
+
+BIC chooses the thrid model, with the three predictos: GenreLatin, Valence, Length.
+```{r}
+summary(reg.fit)$bic
+which.min(summary(reg.fit)$bic)
+```
+
+Looking at Adjusted R^2, Mallow's Cp, and the BIC, the results are all varied. However, I am going to choose the adjusted R^2 since it explains most of a song's popularity compared to the other models.
+
+Looking at the plot we can visually compared the other models and their adjusted R^2.
+```{r}
+plot(reg.fit, scale = "adjr2" )
+```
+
+
+
+The coefficients for the model are below. We can see that only the intercept is very statistically significant, with GenreLatin, Valence and Length being statistically significant only if $\alpha$ < 10.
+```{r}
+reg.bestfit <- lm(Popularity ~ Genre + Danceability + Loudness..dB.. + Liveness + Valence. + Length., data = top50)
+
+summary(reg.bestfit)
+```
+
+```{r}
+Yhat.bestfit <- predict(reg.bestfit)
+MSE.bestfit <- mean((Yhat.bestfit - Popularity)^2)
+MSE.bestfit
+
+
+reg.full <- lm(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
+               data = top50)
+Yhat.full <- predict(reg.full)
+MSE.full <- mean((Yhat.full - Popularity)^2)
+MSE.full
+```
+
+The prediction MSE for the best fit linear model is 13.01549. The prediciton MSE for the full model was slightly smaller at 12.68, however its R^2 was 0.17 compared to 0.23. 
 
