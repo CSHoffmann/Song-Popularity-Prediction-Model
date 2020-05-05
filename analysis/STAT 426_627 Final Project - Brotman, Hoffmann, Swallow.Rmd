@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Reading in the Data and Libraries
-```{r}
+```{r, message=FALSE}
 library(tidyverse)
 library(e1071)
 library(MASS)
