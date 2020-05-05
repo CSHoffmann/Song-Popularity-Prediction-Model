@@ -1,0 +1,112 @@
+---
+title: "Parker"
+author: "Parker Brotman"
+date: "5/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+top50 = read_csv('../data/top50cleaned.csv',col_types = cols(Genre = col_factor()))
+glimpse(top50)
+attach(top50)
+```
+
+
+# Predicting Genre with SVM
+```{r}
+library(e1071)
+```
+
+## Model Selection
+First, let's determine which kernel and costs to use.
+```{r}
+set.seed(1)
+S1tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='linear',ranges = list(cost=10^seq(-3,3)) )
+```
+```{r}
+set.seed(1)
+S2tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='polynomial',ranges = list(cost=10^seq(-3,3)) )
+```
+```{r}
+set.seed(1)
+S3tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='radial',ranges = list(cost=10^seq(-3,3)) )
+```
+```{r}
+set.seed(1)
+S4tuned = tune(svm,Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='sigmoid',ranges = list(cost=10^seq(-3,3)) )
+```
+
+```{r}
+summary(S1tuned)
+```
+```{r}
+summary(S2tuned)
+```
+```{r}
+summary(S3tuned)
+```
+```{r}
+summary(S4tuned)
+```
+
+The two most promising models appear to be the Linear kernel with cost = .1 and the Radial kernel with cost = 1. Let's check how they classified the observations to make sure everything looks normal:
+
+```{r}
+set.seed(1)
+S1 = svm(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='linear',cost=.1)
+Yhat1 = predict(S1,top50)
+table(Yhat1,Genre)
+```
+
+```{r}
+set.seed(1)
+S3 = svm(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = top50,kernel='radial',cost=1)
+Yhat3 = predict(S1,top50)
+table(Yhat3,Genre)
+```
+
+Everything looks normal. Now, let's evaluate the predictive accuracy of these two models.
+
+
+## Evaluating Predictive Accuracy
+This is a small dataset, so rather than splitting the data into training/testing, let's use LOOCV to determine predictive accuracy.
+```{r}
+n = nrow(top50)
+preds = c()
+for (i in 1:n) {
+  d.train = top50[-i,]
+  d.test = top50[i,]
+  s.temp = svm(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = d.train,kernel='linear',cost=.1)
+  yhat = predict(s.temp,d.test['Genre'])[i]
+  preds = append(preds,yhat)
+}
+preds = recode_factor(preds,`1` ='Pop', `2`='Latin',`3`='Hip Hop')
+table(preds,Genre)
+mean(preds == Genre)
+```
+```{r}
+n = nrow(top50)
+preds = c()
+for (i in 1:n) {
+  d.train = top50[-i,]
+  d.test = top50[i,]
+  s.temp = svm(Genre ~ . -Genre - X1 - Track.Name - Artist.Name,data = d.train,kernel='radial',cost=1)
+  yhat = predict(s.temp,d.test['Genre'])[i]
+  preds = append(preds,yhat)
+}
+preds = recode_factor(preds,`1` ='Pop', `2`='Latin',`3`='Hip Hop')
+table(preds,Genre)
+mean(preds == Genre)
+```
+
+The Linear kernal model has a classification rate of .7, while the Radial kernal model has a classification rate of .72. The first model is better at classifying Latin, but can predict Hip Hop with only 50% accuracy. Meanwhile, second model is better at classifying Pop and Hip Hop, but misclassifies Latin as Pop over 2/3 of the time.
+

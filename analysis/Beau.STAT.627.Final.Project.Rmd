@@ -1,0 +1,67 @@
+---
+title: "Beau.STAT.627.Project"
+output: pdf_document
+---
+```{r}
+library (readr)
+library(leaps)
+library(car)
+library(ISLR)
+library(pls)
+library(glmnet)
+```
+
+```{r}
+top50 <- read_csv("/Users/BeauSwallow/Downloads//top50cleaned.txt")
+top50$Genre<-as.factor(top50$Genre)
+```
+```{r}
+reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
+           data = top50, nvmax = 11)
+summary(reg.fit)
+```
+
+```{r}
+set.seed(11)
+training = sample(1:dim(top50)[1], dim(top50)[1] / 2)
+testing <- -training
+spotify.training <- top50[training, ]
+spotify.testing <- top50[testing, ]
+spo.mat.training <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.training)[,-1]
+spo.mat.testing <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.testing)[,-1]
+```
+
+```{r}
+#LASSO
+spo.lasso <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=1)
+(lambda <- spo.lasso$lambda.min)  # optimal lambda
+pred.lasso <- predict(spo.lasso, s=lambda, newx=spo.mat.testing)
+(err.lasso <- mean((spotify.testing$Popularity - pred.lasso)^2))
+predict(spo.lasso, s=lambda, type="coefficients")
+summary(spo.lasso)
+#Ridge Regression
+spo.ridge <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=0)
+(lambda <- spo.ridge$lambda.min)
+pred.ridge <- predict(spo.ridge, s=lambda, newx=spo.mat.testing)
+(err.ridge <- mean((spotify.testing$Popularity - pred.ridge)^2)) 
+predict(spo.ridge, s=lambda, type="coefficients")
+summary(spo.ridge)
+```
+
+```{r}
+reg.pcr <- pcr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
+validationplot(reg.pcr, val.type = "MSEP")
+pred.pcr <- predict(reg.pcr, spotify.testing, ncomp = 10)
+#Calculate MSE
+mean((pred.pcr - spotify.testing$Popularity)^2)
+```
+
+```{r}
+reg.pls <- plsr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
+validationplot(reg.pls, val.type = "MSEP")
+pred.pls <- predict(reg.pls, spotify.testing, ncomp = 10)
+#Calculate MSE
+mean((pred.pls - spotify.testing$Popularity)^2)
+```
+
+

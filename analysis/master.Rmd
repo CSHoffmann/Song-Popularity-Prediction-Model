@@ -10,6 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-top50 = read_csv('../data/top50cleaned.csv')
+library(tidyverse)
+```
+```{r}
+top50 = read_csv('../data/top50cleaned.csv',col_types = cols(Genre = col_factor()))
 ```
 
