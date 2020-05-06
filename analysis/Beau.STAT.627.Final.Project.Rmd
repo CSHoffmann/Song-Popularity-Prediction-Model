@@ -37,37 +37,33 @@ spo.lasso <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=1)
 pred.lasso <- predict(spo.lasso, s=lambda, newx=spo.mat.testing)
 (err.lasso <- mean((spotify.testing$Popularity - pred.lasso)^2))
 predict(spo.lasso, s=lambda, type="coefficients")
-summary(spo.lasso)
 #Ridge Regression
 spo.ridge <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=0)
 (lambda <- spo.ridge$lambda.min)
 pred.ridge <- predict(spo.ridge, s=lambda, newx=spo.mat.testing)
 (err.ridge <- mean((spotify.testing$Popularity - pred.ridge)^2)) 
 predict(spo.ridge, s=lambda, type="coefficients")
-summary(spo.ridge)
 ```
 - MSE for Ridge Regression and LASSO methods is 15.9.
 
 #Using PCR
 ```{r}
 reg.pcr <- pcr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
-validationplot(reg.pcr, val.type = "R2")
 validationplot(reg.pcr, val.type = "MSEP")
-pred.pcr <- predict(reg.pcr, spotify.testing, ncomp = 10)
+pred.pcr <- predict(reg.pcr, spotify.testing, ncomp = 1)
 #Calculate MSE
 mean((pred.pcr - spotify.testing$Popularity)^2)
 ```
-- MSE for PCR method is 19. Oddly, the screeplot is sloped upward which may suggest less components are better at explaining the model.
+- MSE for PCR method is 15.9.
 
 #Using PLS
 ```{r}
 reg.pls <- plsr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
-validationplot(reg.pls, val.type = "R2")
 validationplot(reg.pls, val.type = "MSEP")
-pred.pls <- predict(reg.pls, spotify.testing, ncomp = 10)
+pred.pls <- predict(reg.pls, spotify.testing, ncomp = 8)
 #Calculate MSE
 mean((pred.pls - spotify.testing$Popularity)^2)
 ```
-- MSE for PLS method is 18.8. Same with PCR, the screeplot is oddly sloped upward which suggests more components will lead to a larger MSE.
+- MSE for PLS method is 18.8.
 
-- The MSE for Ridge and LASSO is lower than the MSE for PCR and PLS and the screeplots were shaped oddly so I would advise against PCR and PLS here in favor of LASSO and Ridge.
+- The MSE for Ridge, LASSO, and PCR is lower than the MSE and PLS and the screeplots were shaped oddly so I would advise against and PLS here in favor of LASSO, Ridge, and PCR.
