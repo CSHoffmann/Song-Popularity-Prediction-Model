@@ -184,11 +184,9 @@ reg.full <- lm(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity,
 
 vif(reg.full)
 ```
-The categorical varaible Genre has the largest VIF, with a value of 4.54. This means that adding the Genre varaible to the model with all other predictors is going to increase the variance by a factor of 4.5.
+The categorical varaible Genre has the largest VIF, with a value of 4.54. This means there exists some correlation between Genre and the other predictors. This intuitively makes sense since musical genres are categories that songs fall into based on similar characteristics, such as lyric frequency, beats per minute, length, mood conveyed by the song, etc.
 
-This means there exists some correlation between Genre and the other predictors. This intuitively make sense, since musical genres are generally have similar characteristics in lyric frequency, beats per minute, or the overall mood the song conveys.
-
-Now we are going to run an exhaustive varaible selection of different sized models in order to determine which predictors are necessary, and which are not. 
+Below is an exhaustive varaible selection testing models of different size in order to determine which set of predictors is the strongest model. 
 ```{r}
 reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
            data = top50, nvmax = 11, method = "exhaustive")
