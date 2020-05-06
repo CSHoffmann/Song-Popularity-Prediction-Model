@@ -177,8 +177,18 @@ LDA has the best MSPE, while the two SVM models are not too far behind. QDA, mea
 
 # Linear Regression with Variable Selection 
 
-This test focuses on variable selection for the response "Popularity." In other words, finding the most optimal linear regression function for the prediction of a song's popularity.
+This test focuses on variable selection for the response "Popularity." In other words, finding the most optimal linear regression function for the prediction of a song's popularity. First we are going to find the VIF's of each predictor in the full model to see if there is any multicolinearity between our predictors.
+```{r}
+reg.full <- lm(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
+           data = top50)
 
+vif(reg.full)
+```
+The categorical varaible Genre has the largest VIF, with a value of 4.54. This means that adding the Genre varaible to the model with all other predictors is going to increase the variance by a factor of 4.5.
+
+This means there exists some correlation between Genre and the other predictors. This intuitively make sense, since musical genres are generally have similar characteristics in lyric frequency, beats per minute, or the overall mood the song conveys.
+
+Now we are going to run an exhaustive varaible selection of different sized models in order to determine which predictors are necessary, and which are not. 
 ```{r}
 reg.fit <- regsubsets(Popularity ~ . -X1 -Track.Name -Artist.Name -Popularity, 
            data = top50, nvmax = 11, method = "exhaustive")
@@ -214,19 +224,20 @@ summary(reg.fit)$bic
 which.min(summary(reg.fit)$bic)
 ```
 
-Looking at Adjusted R^2, Mallow's Cp, and the BIC, the results are all varied. However, I am going to choose the adjusted R^2 since it explains most of a song's popularity compared to the other models.
+In this I will choose the model with according to the R^2 criterion of variable selection since that model most accurately predicts the response relative to the other models, or in other words has the best fit according to the training data.   
 
-Looking at the plot we can visually compared the other models and their adjusted R^2.
+Looking at the plot we can visually compared the other models and their adjusted R^2, and see that the model with 7 predictors has the highest R^2 value of 0.23.
 ```{r}
 plot(reg.fit, scale = "adjr2" )
 ```
 
-The coefficients for the model are below. We can see that only the intercept is very statistically significant, with GenreLatin, Valence and Length being statistically significant only if $\alpha$ < 10.
+The coefficients for the model is below. We can see that only the intercept is very statistically significant, with GenreLatin, Valence and Length being statistically significant only if $\alpha$ < 10.
 ```{r}
 reg.bestfit <- lm(Popularity ~ Genre + Danceability + Loudness..dB.. + Liveness + Valence. + Length., data = top50)
 
 summary(reg.bestfit)
 ```
+
 
 ```{r}
 Yhat.bestfit <- predict(reg.bestfit)
