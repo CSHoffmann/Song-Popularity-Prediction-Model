@@ -229,7 +229,7 @@ Looking at the plot we can visually compared the other models and their adjusted
 plot(reg.fit, scale = "adjr2" )
 ```
 
-The coefficients for the model is below. We can see that only the intercept is very statistically significant, with GenreLatin, Valence and Length being statistically significant only if $\alpha$ < 10.
+The coefficients for the model is below. We can see that only the intercept and whether a song is Pop or Latin is very statistically significant, while the other predictors are not, with $\alpha$ < 10.
 ```{r}
 reg.bestfit <- lm(Popularity ~ Genre + Danceability + Loudness..dB.. + Liveness + Valence. + Length., data = top50)
 
@@ -252,21 +252,35 @@ MSE.full
 
 The prediction MSE for the best fit linear model is 13.01549. The prediciton MSE for the full model was slightly smaller at 12.68, however its R^2 was 0.17 compared to 0.23. 
 
-# Initialization of Training and Testing Data
+
+## Creating Testing and Training Data
 ```{r}
 set.seed(11)
-#Create training and testing data
-n=nrow(top50)
 training = sample(1:n,n/2)
 testing <- -training
-spotify.training <- top50[training, ]
-spotify.testing <- top50[testing, ]
-#Create training and testing matrices
+spotify.training <- top50[training,]
+spotify.testing <- top50[testing,]
+```
+
+Cross Validation of the Best Fit model found by Exhaustive Search
+```{r}
+reg.train <- lm(Popularity ~ Genre + Danceability + Loudness..dB.. + Liveness + Valence. + Length., data = spotify.training)
+
+Yhat <- predict(reg.train, newx = spotify.testing)
+MSEp <- mean((spotify.testing$Popularity - Yhat)^2)
+MSEp
+```
+
+- MSE for exhaustive search is `r MSEp`
+
+# Using LASSO and Ridge Regression
+
+Create training and testing matrices
+```{r}
 spo.mat.training <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.training)[,-1]
 spo.mat.testing <- model.matrix(Popularity~.-X1 -Track.Name -Artist.Name -Popularity, data=spotify.testing)[,-1]
 ```
 
-# Using LASSO and Ridge Regression
 ```{r}
 #LASSO
 spo.lasso <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=1)
@@ -274,38 +288,36 @@ spo.lasso <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=1)
 pred.lasso <- predict(spo.lasso, s=lambda, newx=spo.mat.testing)
 (err.lasso <- mean((spotify.testing$Popularity - pred.lasso)^2))
 predict(spo.lasso, s=lambda, type="coefficients")
-summary(spo.lasso)
 #Ridge Regression
 spo.ridge <- cv.glmnet(spo.mat.training, spotify.training$Popularity, alpha=0)
 (lambda <- spo.ridge$lambda.min)
 pred.ridge <- predict(spo.ridge, s=lambda, newx=spo.mat.testing)
 (err.ridge <- mean((spotify.testing$Popularity - pred.ridge)^2)) 
 predict(spo.ridge, s=lambda, type="coefficients")
-summary(spo.ridge)
 ```
 - MSE for Ridge Regression and LASSO methods is 15.9.
 
 # Using PCR
+
 ```{r}
 reg.pcr <- pcr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
-validationplot(reg.pcr, val.type = "R2")
 validationplot(reg.pcr, val.type = "MSEP")
-pred.pcr <- predict(reg.pcr, spotify.testing, ncomp = 10)
+pred.pcr <- predict(reg.pcr, spotify.testing, ncomp = 1)
 #Calculate MSE
 mean((pred.pcr - spotify.testing$Popularity)^2)
 ```
-- MSE for PCR method is 19. Oddly, the screeplot is sloped upward which may suggest less components are better at explaining the model.
+- MSE for PCR method is 15.9.
 
-#Using PLS
+# Using PLS
+
 ```{r}
 reg.pls <- plsr(Popularity ~ .-X1 -Track.Name -Artist.Name -Popularity, data = spotify.training, scale = TRUE, validation = "CV")
-validationplot(reg.pls, val.type = "R2")
 validationplot(reg.pls, val.type = "MSEP")
-pred.pls <- predict(reg.pls, spotify.testing, ncomp = 10)
+pred.pls <- predict(reg.pls, spotify.testing, ncomp = 8)
 #Calculate MSE
 mean((pred.pls - spotify.testing$Popularity)^2)
 ```
-- MSE for PLS method is 18.8. Same with PCR, the screeplot is oddly sloped upward which suggests more components will lead to a larger MSE.
+- MSE for PLS method is 18.8.
 
-- The MSE for Ridge and LASSO is lower than the MSE for PCR and PLS and the screeplots were shaped oddly so I would advise against PCR and PLS here in favor of LASSO and Ridge.
+- The MSE for Ridge, LASSO, and PCR is lower than the MSE and PLS and Exhaustive Search. Also, the screeplots were shaped oddly so I would advise against PLS here in favor of LASSO, Ridge, and PCR.
 
