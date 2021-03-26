@@ -23,7 +23,7 @@ library(pls)
 library(glmnet)
 ```
 
-```{r}
+```{r, message=FALSE}
 top50 = read_csv("../data/top50cleaned.csv", 
                  col_types = cols(Genre = col_factor()))
 attach(top50)
@@ -32,16 +32,16 @@ attach(top50)
 
 # Introduction to the Data
 
-The data we decided to use is called "Top 50 Spotify Songs - 2019" and cand be found [**here**](https://www.kaggle.com/leonardopena/top50spotify2019)
+The data we decided to use is called "Top 50 Spotify Songs - 2019" and can be found [**here**](https://www.kaggle.com/leonardopena/top50spotify2019)
 
-The variables that are used from the dataset are described below:   
+The variables that are used from the data set are described below:   
 
 - Popularity: Numerical rank of song  
 - Genre: Categorical variable of three categories (Hip Hop, Pop and Latin)
 - Beats Per Minute: The tempo of the song  
 - Energy: Higher values indicate higher levels of energy from the song    
 - Dancibilty: Higher values indicate higher dancibility of song   
-- Loudness: Loudness of song measured in decibles    
+- Loudness: Loudness of song measured in decibels    
 - Liveness: Likelihood song is a live recording   
 - Valence: The higher the value, the more positive the mood of the song  
 - Length: Duration of song      
