@@ -1,10 +1,12 @@
-# Song-Popularity-ML-Analysis
+# Song Popularity Prediction Model
 
-A group analysis of spotify's top 50 songs data in order to use machine learning techniques to create an accuracte song popularity predictions model.
-The analysis is completed using R Markdown and various R libraries such as:
+A group analysis of spotify's top 50 songs data utilizing machine learning techniques in order to create and fine tune an accuracte song popularity predictions model.
+The analysis was written in R Markdown utilizing RStudio abd various R libraries such as:
 - tidyverse  
 - glmnet   
 - pls  
+- MASS  
+- leaps  
 - ISLR   
 
 The data can be found on [Kaggle](https://www.kaggle.com/leonardopena/top50spotify2019)
